@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Özel AI Asistanı</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 450px; height: 85vh; background: white; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 5px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .chat-header { background: #6c5ce7; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 0.95rem; line-height: 1.4; }
+        .user-message { background: #6c5ce7; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bot-message { background: #e4e6eb; color: #050505; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .chat-input-area { display: flex; padding: 10px; background: #f0f2f5; gap: 10px; }
+        .chat-input-area input { flex: 1; padding: 12px; border: none; border-radius: 20px; outline: none; font-size: 0.95rem; }
+        .chat-input-area button { background: #6c5ce7; color: white; border: none; padding: 0 20px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .chat-input-area button:hover { background: #5b4cc4; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">✨ Kardeşimin Özel Yapay Zekası ✨</div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="message bot-message">Merhaba! Ben sadece senin için buradayım. Bugün nasıl hissediyorsun, neler yapmak istersin? 😊</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="userInput" placeholder="Bir şeyler yaz..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Gönder</button>
+    </div>
+</div>
+
+<script>
+    // API key local serverda (server.py) tutulur, tarayiciya koyma.
+    const API_URL = "http://localhost:8000/api/chat";
+    const MODEL_NAME = "nvidia/nemotron-3-super-120b-a12b:free";
+
+    // Botun kardeşine nasıl davranacağını belirlediğin kısım (Sistem Talimatı)
+    // "Kardeşinin_Adı" yazan yerleri onun gerçek ismiyle değiştir.
+    const messages = [
+        {
+            "role": "system", 
+            "content": "Sen kullanıcının kız/erkek kardeşine özel olarak tasarlanmış harika bir yapay zeka asistanısın. Kullanıcının adı Asya. Ona her zaman ismiyle (örneğin: 'Merhaba Asya!', 'Harikasın Asya!') hitap et. Çok destekleyici, neşeli, onunla gurur duyan, motivasyon veren ve dünyadaki en özel insan oymuş gibi hissettiren bir tavır takın. Esprili ve sıcak ol."
+        }
+    ];
+
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+
+    function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        // Kullanıcı mesajını ekrana ekle
+        appendMessage(text, 'user-message');
+        userInput.value = '';
+        messages.push({"role": "user", "content": text});
+
+        // Botun düşünüyor efekti
+        const thinkingId = appendMessage("Düşünüyor...", 'bot-message');
+
+        try {
+            if (window.location.protocol === "file:") {
+                throw new Error("Dosyayi file:// ile actin. Lutfen local server ile ac (ornegin: python server.py).");
+            }
+
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: MODEL_NAME,
+                    messages: messages
+                })
+            });
+
+            if (response.status === 405) {
+                throw new Error("HTTP 405 - API endpoint not handled. Run server.py and open http://localhost:8000");
+            }
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error?.message || `HTTP ${response.status}`);
+            }
+
+            const botReply = data.choices?.[0]?.message?.content;
+            if (!botReply) {
+                throw new Error("Beklenmedik yanit formati alindi.");
+            }
+
+            // Düşünüyor yazısını kaldır ve gerçek cevabı yaz
+            document.getElementById(thinkingId).remove();
+            appendMessage(botReply, 'bot-message');
+            messages.push({"role": "assistant", "content": botReply});
+
+        } catch (error) {
+            const thinkingEl = document.getElementById(thinkingId);
+            if (thinkingEl) {
+                thinkingEl.innerText = `Hata: ${error.message || "Baglanti kurulamadi."}`;
+            }
+            console.error(error);
+        }
+    }
+
+    function appendMessage(text, className) {
+        const msgDiv = document.createElement('div');
+        const id = 'msg-' + Math.random().toString(36).substr(2, 9);
+        msgDiv.id = id;
+        msgDiv.className = `message ${className}`;
+        msgDiv.innerText = text;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return id;
+    }
+</script>
+
+</body>
+</html>
