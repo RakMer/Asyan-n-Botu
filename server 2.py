@@ -111,9 +111,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def run():
-    port = int(os.environ.get("PORT", "8000"))
+    # Render'ın varsayılan portu 10000 olduğu için default değeri 10000 yaptık
+    port = int(os.environ.get("PORT", "10000")) 
     server = HTTPServer(("0.0.0.0", port), Handler)
-    print(f"Server running at http://localhost:{port}")
+    print(f"Server running at port {port}")
     server.serve_forever()
 
 
