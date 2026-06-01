@@ -25,6 +25,12 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.end_headers()
 
+    def do_GET(self):
+        # Eğer istek doğrudan ana sayfaya gelirse index.html'i yükle
+        if self.path == "/":
+            self.path = "/index.html"
+        return super().do_GET()
+
     def do_POST(self):
         try:
             if self.path != "/api/chat":
