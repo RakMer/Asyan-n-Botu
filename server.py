@@ -25,12 +25,6 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.end_headers()
 
-    def do_GET(self):
-        # Eğer istek doğrudan ana sayfaya gelirse index.html'i yükle
-        if self.path == "/":
-            self.path = "/index.html"
-        return super().do_GET()
-
     def do_POST(self):
         try:
             if self.path != "/api/chat":
@@ -111,10 +105,9 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def run():
-    # Render'ın varsayılan portu 10000 olduğu için default değeri 10000 yaptık
-    port = int(os.environ.get("PORT", "10000")) 
+    port = int(os.environ.get("PORT", "1000"))
     server = HTTPServer(("0.0.0.0", port), Handler)
-    print(f"Server running at port {port}")
+    print(f"Server running at http://localhost:{port}")
     server.serve_forever()
 
 
